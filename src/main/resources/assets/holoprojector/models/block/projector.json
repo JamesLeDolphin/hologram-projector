@@ -1,0 +1,7 @@
+{
+  "render_type": "minecraft:translucent",
+  "parent": "minecraft:block/pressure_plate_up",
+  "textures": {
+    "texture": "holoprojector:block/projector"
+  }
+}
