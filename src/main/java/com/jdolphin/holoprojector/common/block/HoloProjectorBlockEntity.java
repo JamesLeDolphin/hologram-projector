@@ -12,12 +12,13 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-
+import java.awt.Color;
 import java.util.UUID;
 
 public class HoloProjectorBlockEntity extends BlockEntity {
     private boolean lock = false, solid = false, slim = false;
     private GameProfile targetPlayer = null;
+    private int color = new Color(0.4f, 0.4f, 1, 0.6f).getRGB();
     private UUID owner = Util.NIL_UUID;
 
     public HoloProjectorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
@@ -50,6 +51,14 @@ public class HoloProjectorBlockEntity extends BlockEntity {
 
     public UUID getOwner() {
         return owner;
+    }
+
+    public void setColor(int color) {
+        this.color = color;
+    }
+
+    public int getColor() {
+        return this.color;
     }
 
     public Packet<ClientGamePacketListener> getUpdatePacket() {
@@ -87,6 +96,9 @@ public class HoloProjectorBlockEntity extends BlockEntity {
         this.slim = tag.getBoolean("Slim");
         this.solid = tag.getBoolean("Solid");
         this.owner = tag.getUUID("Owner");
+        if (tag.contains("Color")) {
+            this.color = tag.getInt("Color");
+        }
     }
 
     @Override
@@ -101,5 +113,6 @@ public class HoloProjectorBlockEntity extends BlockEntity {
         tag.putBoolean("Slim", slim);
         tag.putBoolean("Solid", solid);
         tag.putUUID("Owner", owner);
+        tag.putInt("Color", this.color);
     }
 }

@@ -11,6 +11,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -21,6 +23,9 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+
+import java.awt.Color;
+
 import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("ALL")
@@ -78,10 +83,16 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof HoloProjectorBlockEntity projector) {
                 if (!projector.isLocked() || projector.getOwner().equals(player.getUUID())) {
+                    if (player.getMainHandItem().getItem() instanceof DyeItem dyeItem) {
+                        DyeColor dye = dyeItem.getDyeColor();
+                        float[] rgb = dye.getTextureDiffuseColors();
+                        projector.setColor(new Color(rgb[0], rgb[1], rgb[2]).getRGB());
+                    } else {
                     String name = projector.getTargetPlayer() == null ? "" : projector.getTargetPlayer().getName();
                     HPPackets.sendTo(serverPlayer, new CBOpenGuiPacket(pos, name, projector.isLocked(), projector.isSlim(), projector.isSolid()));
                     return InteractionResult.SUCCESS;
                 }
+            }
             }
         }
         return super.use(state, level, pos, player, hand, result);
