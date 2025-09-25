@@ -29,7 +29,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
-
+import java.awt.Color;
 import java.util.Map;
 import java.util.Optional;
 
@@ -66,7 +66,12 @@ public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorB
         if (type == null) type = RenderType.entityTranslucent(DefaultPlayerSkin.getDefaultSkin());
 
         VertexConsumer consumer = source.getBuffer(type);
+        Color color = new Color(be.getColor(), true);
+        float r = color.getRed() / 255;
+        float g = color.getGreen() / 255;
+        float b = color.getBlue() / 255;
+        float a = color.getAlpha() / 255;
         if (be.isSolid()) model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, 1, 1, 1, 1);
-        else model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, 0.4f, 0.4f, 1, 0.6f);
+        else model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, r, g, b, a);
     }
 }
