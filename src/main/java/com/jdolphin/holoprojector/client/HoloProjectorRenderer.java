@@ -16,36 +16,32 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
-import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
-import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.EntityRenderers;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.client.resources.SkinManager;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.block.entity.BeaconBlockEntity;
 import net.minecraft.world.phys.Vec3;
 import java.awt.Color;
 import java.util.Map;
-import java.util.Optional;
 
 public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorBlockEntity> {
 
-    public boolean shouldRenderOffScreen(HoloProjectorBlockEntity entity) {
+    public boolean shouldRenderOffScreen(HoloProjectorBlockEntity p_112138_) {
         return true;
     }
 
-    public boolean shouldRender(HoloProjectorBlockEntity entity, Vec3 vec3) {
-        return true;
+    public int getViewDistance() {
+        return 256;
+    }
+
+    public boolean shouldRender(HoloProjectorBlockEntity blockEntity, Vec3 vec3) {
+        return Vec3.atCenterOf(blockEntity.getBlockPos()).multiply(1.0D, 0.0D, 1.0D).closerThan(vec3.multiply(1.0D, 0.0D, 1.0D), this.getViewDistance());
     }
 
     @Override
     public void render(HoloProjectorBlockEntity be, float delta, PoseStack stack, MultiBufferSource source, int light, int overlay) {
         GameProfile profile = be.getTargetPlayer();
+        stack.pushPose();
         stack.translate(0.5, 1.6, 0.5);
         stack.mulPose(Axis.ZN.rotationDegrees(180));
         stack.mulPose(Axis.YP.rotationDegrees(be.getBlockState().getValue(HoloProjectorBlock.FACING).getOpposite().toYRot()));
@@ -66,12 +62,13 @@ public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorB
         if (type == null) type = RenderType.entityTranslucent(DefaultPlayerSkin.getDefaultSkin());
 
         VertexConsumer consumer = source.getBuffer(type);
-        Color color = new Color(be.getColor(), true);
-        float r = color.getRed() / 255;
-        float g = color.getGreen() / 255;
-        float b = color.getBlue() / 255;
-        float a = color.getAlpha() / 255;
+        Color color = new Color(be.getColor());
+
+        float r = color.getRed() / 255f;
+        float g = color.getGreen() / 255f;
+        float b = color.getBlue() / 255f;
         if (be.isSolid()) model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, 1, 1, 1, 1);
-        else model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, r, g, b, a);
+        else model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, r, g, b, 0.6f);
+        stack.popPose();
     }
 }

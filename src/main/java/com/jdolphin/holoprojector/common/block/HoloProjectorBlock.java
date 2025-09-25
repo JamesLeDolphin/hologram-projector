@@ -55,6 +55,10 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
         return AABB;
     }
 
+    public VoxelShape getVisualShape(BlockState p_60479_, BlockGetter p_60480_, BlockPos p_60481_, CollisionContext p_60482_) {
+        return this.getCollisionShape(p_60479_, p_60480_, p_60481_, p_60482_);
+    }
+
     public VoxelShape getShape(BlockState p_49341_, BlockGetter p_49342_, BlockPos p_49343_, CollisionContext p_49344_) {
         return Block.box(1, 0, 1, 15, 32, 15);
     }
@@ -82,22 +86,24 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof HoloProjectorBlockEntity projector) {
-                if (!projector.isLocked() || projector.getOwner().equals(player.getUUID())) {
-                    if (player.getMainHandItem().getItem() instanceof DyeItem dyeItem) {
-                        DyeColor dye = dyeItem.getDyeColor();
-                        float[] rgb = dye.getTextureDiffuseColors();
-                        projector.setColor(new Color(rgb[0], rgb[1], rgb[2]).getRGB());
-                    } else {
-                    String name = projector.getTargetPlayer() == null ? "" : projector.getTargetPlayer().getName();
-                    HPPackets.sendTo(serverPlayer, new CBOpenGuiPacket(pos, name, projector.isLocked(), projector.isSlim(), projector.isSolid()));
-                    return InteractionResult.SUCCESS;
+                if (player.getUsedItemHand().equals(hand)) {
+                    if (!projector.isLocked() || projector.getOwner().equals(player.getUUID())) {
+                        if (player.getItemInHand(hand).getItem() instanceof DyeItem dyeItem) {
+                            DyeColor dye = dyeItem.getDyeColor();
+                            float[] rgb = dye.getTextureDiffuseColors();
+                            projector.setColor(new Color(rgb[0], rgb[1], rgb[2]).getRGB());
+                            return InteractionResult.SUCCESS;
+                        } else {
+                            String name = projector.getTargetPlayer() == null ? "" : projector.getTargetPlayer().getName();
+                            HPPackets.sendTo(serverPlayer, new CBOpenGuiPacket(pos, name, projector.isLocked(), projector.isSlim(), projector.isSolid()));
+                            return InteractionResult.SUCCESS;
+                        }
+                    }
                 }
-            }
             }
         }
         return super.use(state, level, pos, player, hand, result);
     }
-
 
     @Override
     public @Nullable BlockEntity newBlockEntity(BlockPos pos, BlockState state) {

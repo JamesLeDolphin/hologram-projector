@@ -9,6 +9,7 @@ import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,11 +19,16 @@ import java.util.UUID;
 public class HoloProjectorBlockEntity extends BlockEntity {
     private boolean lock = false, solid = false, slim = false;
     private GameProfile targetPlayer = null;
-    private int color = new Color(0.4f, 0.4f, 1, 0.6f).getRGB();
+    private int color = new Color(0.4f, 0.4f, 1).getRGB();
     private UUID owner = Util.NIL_UUID;
 
     public HoloProjectorBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
+    }
+
+    @Override
+    public boolean hasCustomOutlineRendering(Player player) {
+        return true;
     }
 
     public void handleUpdateTag(CompoundTag tag) {
@@ -55,6 +61,8 @@ public class HoloProjectorBlockEntity extends BlockEntity {
 
     public void setColor(int color) {
         this.color = color;
+        this.requestModelDataUpdate();
+        this.setChanged();
     }
 
     public int getColor() {
