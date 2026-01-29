@@ -4,12 +4,16 @@ import com.jdolphin.holoprojector.common.HoloProjector;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,7 +22,7 @@ import java.util.UUID;
 
 public class HoloProjectorBlockEntity extends BlockEntity {
     private boolean lock = false, solid = false, slim = false;
-    private GameProfile targetPlayer = null;
+    private ResolvableProfile targetPlayer = null;
     private int color = new Color(0.4f, 0.4f, 1).getRGB();
     private UUID owner = Util.NIL_UUID;
 
@@ -32,7 +36,7 @@ public class HoloProjectorBlockEntity extends BlockEntity {
     }
 
     public void handleUpdateTag(CompoundTag tag) {
-        this.load(tag);
+        this.loadAdditional(tag, this.level.registryAccess());
     }
 
     public boolean isSlim() {
@@ -43,7 +47,7 @@ public class HoloProjectorBlockEntity extends BlockEntity {
         return solid;
     }
 
-    public GameProfile getTargetPlayer() {
+    public ResolvableProfile getTargetPlayer() {
         return targetPlayer;
     }
 
@@ -73,9 +77,9 @@ public class HoloProjectorBlockEntity extends BlockEntity {
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
-        this.saveAdditional(tag);
+        this.saveAdditional(tag, registries);
         return tag;
     }
 
@@ -84,7 +88,7 @@ public class HoloProjectorBlockEntity extends BlockEntity {
         super.setChanged();
     }
 
-    public void updateProjector(GameProfile profile, boolean lock, boolean slim, boolean solid) {
+    public void updateProjector(ResolvableProfile profile, boolean lock, boolean slim, boolean solid) {
         this.targetPlayer = profile;
         this.lock = lock;
         this.slim = slim;
@@ -96,10 +100,17 @@ public class HoloProjectorBlockEntity extends BlockEntity {
         this(HoloProjector.PROJECTOR_ENTITY.get(), pos, state);
     }
 
+    private void setTargetPlayer(ResolvableProfile player) {
+        this.targetPlayer = player;
+    }
+
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
-        if (tag.contains("Projected")) this.targetPlayer = NbtUtils.readGameProfile(tag.getCompound("Projected"));
+    public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        if (tag.contains("Projected")) {
+            ResolvableProfile.CODEC.parse(NbtOps.INSTANCE, tag.get("Projected")).resultOrPartial((err) ->
+                    HoloProjector.LOGGER.error("Failed to load profile from player head: {}", err)).ifPresent(this::setTargetPlayer);
+        }
         this.lock = tag.getBoolean("Locked");
         this.slim = tag.getBoolean("Slim");
         this.solid = tag.getBoolean("Solid");
@@ -110,12 +121,11 @@ public class HoloProjectorBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider provider) {
+        super.saveAdditional(tag, provider);
 
         if (targetPlayer != null) {
-            CompoundTag compoundtag = new CompoundTag();
-            tag.put("Projected", NbtUtils.writeGameProfile(compoundtag, this.targetPlayer));
+            tag.put("Projected", ResolvableProfile.CODEC.encodeStart(NbtOps.INSTANCE, this.targetPlayer).getOrThrow());
         }
         tag.putBoolean("Locked", lock);
         tag.putBoolean("Slim", slim);

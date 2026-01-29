@@ -1,61 +1,58 @@
 package com.jdolphin.holoprojector.common.packet;
 
+import com.jdolphin.holoprojector.common.HoloProjector;
 import com.jdolphin.holoprojector.common.block.HoloProjectorBlockEntity;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.component.ResolvableProfile;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SkullBlockEntity;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public class SBUpdateHologramPacket {
-    private final BlockPos pos;
-    private final boolean slim;
-    private final boolean lock;
-    private final boolean solid;
-    private final String target;
+public record SBUpdateHologramPacket(BlockPos pos, String target, boolean lock, boolean slim, boolean solid) implements CustomPacketPayload {
+    public static final Type<SBUpdateHologramPacket> TYPE = new Type<>(HoloProjector.id("update"));
 
-    public SBUpdateHologramPacket(BlockPos pos, String target, boolean lock, boolean slim, boolean solid) {
-        this.pos = pos;
-        this.target = target;
-        this.lock = lock;
-        this.slim = slim;
-        this.solid = solid;
-    }
+    public static final StreamCodec<FriendlyByteBuf, SBUpdateHologramPacket> CODEC = StreamCodec.composite(BlockPos.STREAM_CODEC, SBUpdateHologramPacket::pos,
+            ByteBufCodecs.STRING_UTF8, SBUpdateHologramPacket::target,
+            ByteBufCodecs.BOOL, SBUpdateHologramPacket::lock,
+            ByteBufCodecs.BOOL, SBUpdateHologramPacket::slim,
+            ByteBufCodecs.BOOL, SBUpdateHologramPacket::solid, SBUpdateHologramPacket::new);
 
-    public SBUpdateHologramPacket(FriendlyByteBuf buf) {
-        this.pos = buf.readBlockPos();
-        this.target = buf.readUtf();
-        this.lock = buf.readBoolean();
-        this.slim = buf.readBoolean();
-        this.solid = buf.readBoolean();
-    }
-
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeBlockPos(pos).writeUtf(target).writeBoolean(lock)
-                .writeBoolean(slim).writeBoolean(solid);
-    }
-
-    public void handle(Supplier<NetworkEvent.Context> supplier) {
-        NetworkEvent.Context ctx = supplier.get();
-        ServerPlayer player = ctx.getSender();
-        if (player != null) {
-            ServerLevel level = player.serverLevel();
-            BlockEntity be = level.getBlockEntity(this.pos);
+    public static void handle(SBUpdateHologramPacket packet, IPayloadContext context) {
+        Player player = context.player();
+        if (player instanceof ServerPlayer serverPlayer) {
+            ServerLevel level = serverPlayer.serverLevel();
+            BlockEntity be = level.getBlockEntity(packet.pos);
             if (be instanceof HoloProjectorBlockEntity projector) {
                 if (level.getServer().getProfileCache() != null) {
-                    Optional<GameProfile> gameProfile = level.getServer().getProfileCache().get(target);
+                    Optional<GameProfile> gameProfile = level.getServer().getProfileCache().get(packet.target);
                     if (gameProfile.isPresent()) {
                         GameProfile profile = gameProfile.get();
-                        SkullBlockEntity.updateGameprofile(profile, profile1 -> projector.updateProjector(profile1, lock, slim, solid));
+                        ResolvableProfile resolvableProfile = new ResolvableProfile(profile);
+                        resolvableProfile.resolve().thenAcceptAsync(resolvableProfile1 -> {
+                                    projector.updateProjector(resolvableProfile1,  packet.lock, packet.slim, packet.solid);
+                                    System.out.println(resolvableProfile1);
+                                }
+                                );
                     }
                 }
             }
         }
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

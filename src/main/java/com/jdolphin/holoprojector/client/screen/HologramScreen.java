@@ -1,6 +1,6 @@
 package com.jdolphin.holoprojector.client.screen;
 
-import com.jdolphin.holoprojector.common.packet.HPPackets;
+import com.jdolphin.holoprojector.common.HoloProjector;
 import com.jdolphin.holoprojector.common.packet.SBUpdateHologramPacket;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,11 +11,12 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.awt.*;
 
 public class HologramScreen extends Screen {
-    public static ResourceLocation BG_LOCATION = new ResourceLocation("holoprojector","textures/gui/hologram_bg.png");
+    public static ResourceLocation BG_LOCATION = HoloProjector.id("textures/gui/hologram_bg.png");
     private final BlockPos pos;
     private final String name;
     private final boolean bSlim;
@@ -45,16 +46,19 @@ public class HologramScreen extends Screen {
         this.nameInput = this.addWidget(new EditBox(this.font, this.width / 2 - 20, this.height / 2 - 64, 128, 20,
                 Component.translatable("chat.editBox")));
         nameInput.setValue(name);
-        this.lock = this.addWidget(new Checkbox(this.width / 2 - 20, this.height / 2 - 12, 20, 20, Component.empty(), bLock, false));
-        this.slim = this.addWidget(new Checkbox(this.width / 2 + 128, this.height / 2 - 12, 20, 20, Component.empty(), bSlim, false));
+        this.lock = this.addWidget(Checkbox.builder(Component.empty(), this.font).maxWidth(20).selected(bLock)
+                .pos(this.width / 2 - 20, this.height / 2 - 12).build());
+        this.slim = this.addWidget(Checkbox.builder(Component.empty(), this.font).maxWidth(20).selected(bSlim)
+                .pos(this.width / 2 + 128, this.height / 2 - 12).build());
 
         //this.player = this.addWidget(new Checkbox(this.width / 2 - 20, this.height / 2 + 12, 20, 20, Component.empty(), bPlayer, false));
-        this.solid = this.addWidget(new Checkbox(this.width / 2 - 20, this.height / 2 + 12, 20, 20, Component.empty(), bSolid, false));
+        this.solid = this.addWidget(Checkbox.builder(Component.empty(), this.font).selected(bSolid).maxWidth(20)
+                .pos(this.width / 2 - 20, this.height / 2 + 12).build());
 
 
         done = this.addRenderableWidget(new Button.Builder(Component.literal("Done"), button -> {
             SBUpdateHologramPacket packet = new SBUpdateHologramPacket(pos, nameInput.getValue(), lock.selected(), slim.selected(), solid.selected());
-            HPPackets.INSTANCE.sendToServer(packet);
+            PacketDistributor.sendToServer(packet);
             this.onClose();
         }).bounds(this.width / 2 - 128, this.height / 2 + 68, 128, 20).build());
 

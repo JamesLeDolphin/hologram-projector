@@ -4,13 +4,12 @@ import com.jdolphin.holoprojector.common.block.HoloProjectorBlock;
 import com.jdolphin.holoprojector.common.block.HoloProjectorBlockEntity;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
+import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.PlayerModel;
-import net.minecraft.client.model.geom.EntityModelSet;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -19,10 +18,9 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.client.resources.SkinManager;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.level.block.entity.BeaconBlockEntity;
+import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.phys.Vec3;
 import java.awt.Color;
-import java.util.Map;
 
 public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorBlockEntity> {
 
@@ -40,7 +38,7 @@ public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorB
 
     @Override
     public void render(HoloProjectorBlockEntity be, float delta, PoseStack stack, MultiBufferSource source, int light, int overlay) {
-        GameProfile profile = be.getTargetPlayer();
+        ResolvableProfile profile = be.getTargetPlayer();
         stack.pushPose();
         stack.translate(0.5, 1.6, 0.5);
         stack.mulPose(Axis.ZN.rotationDegrees(180));
@@ -53,13 +51,9 @@ public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorB
         RenderType type = null;
 
         if (profile != null) {
-            Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> map = Minecraft.getInstance().getMinecraftSessionService().getTextures(profile, false);
-            MinecraftProfileTexture texture = map.get(MinecraftProfileTexture.Type.SKIN);
-            if (texture != null) {
-                type = RenderType.entityTranslucent(skinManager.registerTexture(texture, MinecraftProfileTexture.Type.SKIN));
-            }
+            type = RenderType.entityTranslucent(skinManager.getInsecureSkin(profile.gameProfile()).texture());
         }
-        if (type == null) type = RenderType.entityTranslucent(DefaultPlayerSkin.getDefaultSkin());
+        if (type == null) type = RenderType.entityTranslucent(DefaultPlayerSkin.getDefaultTexture());
 
         VertexConsumer consumer = source.getBuffer(type);
         Color color = new Color(be.getColor());
@@ -67,8 +61,8 @@ public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorB
         float r = color.getRed() / 255f;
         float g = color.getGreen() / 255f;
         float b = color.getBlue() / 255f;
-        if (be.isSolid()) model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, 1, 1, 1, 1);
-        else model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, r, g, b, 0.6f);
+        if (be.isSolid()) model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, Color.WHITE.getRGB());
+        else model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, new Color(r, g, b, 0.6f).getRGB());
         stack.popPose();
     }
 }

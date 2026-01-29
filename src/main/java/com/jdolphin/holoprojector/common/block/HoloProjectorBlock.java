@@ -2,11 +2,10 @@ package com.jdolphin.holoprojector.common.block;
 
 import com.jdolphin.holoprojector.common.HoloProjector;
 import com.jdolphin.holoprojector.common.packet.CBOpenGuiPacket;
-import com.jdolphin.holoprojector.common.packet.HPPackets;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -24,8 +23,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import java.awt.Color;
-
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("ALL")
@@ -35,6 +33,11 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
     public HoloProjectorBlock(Properties properties) {
         super(properties);
         this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
+    }
+
+    @Override
+    protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
+        return null;
     }
 
     public float getDestroyProgress(BlockState state, Player player, BlockGetter getter, BlockPos pos) {
@@ -82,27 +85,26 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
         builder.add(FACING);
     }
 
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult result) {
+    public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult result) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof HoloProjectorBlockEntity projector) {
-                if (player.getUsedItemHand().equals(hand)) {
-                    if (!projector.isLocked() || projector.getOwner().equals(player.getUUID())) {
-                        if (player.getItemInHand(hand).getItem() instanceof DyeItem dyeItem) {
-                            DyeColor dye = dyeItem.getDyeColor();
-                            float[] rgb = dye.getTextureDiffuseColors();
-                            projector.setColor(new Color(rgb[0], rgb[1], rgb[2]).getRGB());
-                            return InteractionResult.SUCCESS;
-                        } else {
-                            String name = projector.getTargetPlayer() == null ? "" : projector.getTargetPlayer().getName();
-                            HPPackets.sendTo(serverPlayer, new CBOpenGuiPacket(pos, name, projector.isLocked(), projector.isSlim(), projector.isSolid()));
-                            return InteractionResult.SUCCESS;
-                        }
+                if (!projector.isLocked() || projector.getOwner().equals(player.getUUID())) {
+                    if (player.getMainHandItem().getItem() instanceof DyeItem dyeItem) {
+                        DyeColor dye = dyeItem.getDyeColor();
+                        int rgb = dye.getTextureDiffuseColor();
+                        projector.setColor(rgb);
+                        return InteractionResult.SUCCESS;
+                    } else {
+                        String name = projector.getTargetPlayer() == null ? "" : projector.getTargetPlayer().name().orElse("");
+                        PacketDistributor.sendToPlayer(serverPlayer, new CBOpenGuiPacket(pos, name, projector.isLocked(), projector.isSlim(), projector.isSolid()));
+                        return InteractionResult.SUCCESS;
                     }
                 }
+
             }
         }
-        return super.use(state, level, pos, player, hand, result);
+        return super.useWithoutItem(state, level, pos, player, result);
     }
 
     @Override
