@@ -12,13 +12,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.component.ResolvableProfile;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SkullBlockEntity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.concurrent.CompletableFuture;
 
 public record SBUpdateHologramPacket(BlockPos pos, String target, boolean lock, boolean slim, boolean solid) implements CustomPacketPayload {
     public static final Type<SBUpdateHologramPacket> TYPE = new Type<>(HoloProjector.id("update"));
@@ -35,18 +34,17 @@ public record SBUpdateHologramPacket(BlockPos pos, String target, boolean lock, 
             ServerLevel level = serverPlayer.serverLevel();
             BlockEntity be = level.getBlockEntity(packet.pos);
             if (be instanceof HoloProjectorBlockEntity projector) {
-                if (level.getServer().getProfileCache() != null) {
-                    Optional<GameProfile> gameProfile = level.getServer().getProfileCache().get(packet.target);
-                    if (gameProfile.isPresent()) {
-                        GameProfile profile = gameProfile.get();
-                        ResolvableProfile resolvableProfile = new ResolvableProfile(profile);
-                        resolvableProfile.resolve().thenAcceptAsync(resolvableProfile1 -> {
-                                    projector.updateProjector(resolvableProfile1,  packet.lock, packet.slim, packet.solid);
-                                    System.out.println(resolvableProfile1);
-                                }
-                                );
-                    }
-                }
+                CompletableFuture<Optional<GameProfile>> completable = SkullBlockEntity.fetchGameProfile(packet.target);
+                context.enqueueWork(() -> {
+                    completable.thenAccept(optional -> {
+                        if (optional.isPresent()) {
+                            GameProfile profile = optional.get();
+                            ResolvableProfile resolvableProfile = new ResolvableProfile(profile);
+                            resolvableProfile.resolve().thenAccept(resolvableProfile1 ->
+                                    projector.updateProjector(resolvableProfile1, packet.lock, packet.slim, packet.solid));
+                        }
+                    });
+                });
             }
         }
     }

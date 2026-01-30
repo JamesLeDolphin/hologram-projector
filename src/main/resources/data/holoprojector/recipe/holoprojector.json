@@ -16,7 +16,7 @@
     }
   },
   "result": {
-    "item": "holoprojector:projector",
+    "id": "holoprojector:projector",
     "count": 1
   }
 }
