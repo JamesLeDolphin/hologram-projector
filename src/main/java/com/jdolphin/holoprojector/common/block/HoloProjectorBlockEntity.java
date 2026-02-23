@@ -1,14 +1,11 @@
 package com.jdolphin.holoprojector.common.block;
 
 import com.jdolphin.holoprojector.common.HoloProjector;
-import com.mojang.authlib.GameProfile;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -17,7 +14,8 @@ import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import java.awt.Color;
+
+import java.awt.*;
 import java.util.UUID;
 
 public class HoloProjectorBlockEntity extends BlockEntity {

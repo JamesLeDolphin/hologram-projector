@@ -2,9 +2,6 @@ package com.jdolphin.holoprojector.client;
 
 import com.jdolphin.holoprojector.common.block.HoloProjectorBlock;
 import com.jdolphin.holoprojector.common.block.HoloProjectorBlockEntity;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.MinecraftProfileTexture;
-import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -20,7 +17,8 @@ import net.minecraft.client.resources.SkinManager;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.component.ResolvableProfile;
 import net.minecraft.world.phys.Vec3;
-import java.awt.Color;
+
+import java.awt.*;
 
 public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorBlockEntity> {
 
@@ -38,31 +36,35 @@ public class HoloProjectorRenderer implements BlockEntityRenderer<HoloProjectorB
 
     @Override
     public void render(HoloProjectorBlockEntity be, float delta, PoseStack stack, MultiBufferSource source, int light, int overlay) {
-        ResolvableProfile profile = be.getTargetPlayer();
-        stack.pushPose();
-        stack.translate(0.5, 1.6, 0.5);
-        stack.mulPose(Axis.ZN.rotationDegrees(180));
-        stack.mulPose(Axis.YP.rotationDegrees(be.getBlockState().getValue(HoloProjectorBlock.FACING).getOpposite().toYRot()));
-        if (!be.isSolid()) stack.scale(1, 1 - ((float) Math.random()) * 0.02f, 1);
+        if (be.getBlockState().getValue(HoloProjectorBlock.POWERED)) {
+            ResolvableProfile profile = be.getTargetPlayer();
+            stack.pushPose();
+            stack.translate(0.5, 1.6, 0.5);
+            stack.mulPose(Axis.ZN.rotationDegrees(180));
+            stack.mulPose(Axis.YP.rotationDegrees(be.getBlockState().getValue(HoloProjectorBlock.FACING).getOpposite().toYRot()));
+            if (!be.isSolid()) stack.scale(1, 1 - ((float) Math.random()) * 0.02f, 1);
 
-        PlayerModel<LivingEntity> model = new PlayerModel<>(Minecraft.getInstance().getEntityModels().bakeLayer(be.isSlim() ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER), be.isSlim());
-        model.young = false;
-        SkinManager skinManager = Minecraft.getInstance().getSkinManager();
-        RenderType type = null;
+            PlayerModel<LivingEntity> model = new PlayerModel<>(Minecraft.getInstance().getEntityModels().bakeLayer(be.isSlim() ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER), be.isSlim());
+            model.young = false;
+            SkinManager skinManager = Minecraft.getInstance().getSkinManager();
+            RenderType type = null;
 
-        if (profile != null) {
-            type = RenderType.entityTranslucent(skinManager.getInsecureSkin(profile.gameProfile()).texture());
+            if (profile != null) {
+                type = RenderType.entityTranslucent(skinManager.getInsecureSkin(profile.gameProfile()).texture());
+            }
+            if (type == null) type = RenderType.entityTranslucent(DefaultPlayerSkin.getDefaultTexture());
+
+            VertexConsumer consumer = source.getBuffer(type);
+            Color color = new Color(be.getColor());
+
+            float r = color.getRed() / 255f;
+            float g = color.getGreen() / 255f;
+            float b = color.getBlue() / 255f;
+            if (be.isSolid())
+                model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, Color.WHITE.getRGB());
+            else
+                model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, new Color(r, g, b, 0.6f).getRGB());
+            stack.popPose();
         }
-        if (type == null) type = RenderType.entityTranslucent(DefaultPlayerSkin.getDefaultTexture());
-
-        VertexConsumer consumer = source.getBuffer(type);
-        Color color = new Color(be.getColor());
-
-        float r = color.getRed() / 255f;
-        float g = color.getGreen() / 255f;
-        float b = color.getBlue() / 255f;
-        if (be.isSolid()) model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, Color.WHITE.getRGB());
-        else model.renderToBuffer(stack, consumer, LightTexture.FULL_BRIGHT, overlay, new Color(r, g, b, 0.6f).getRGB());
-        stack.popPose();
     }
 }

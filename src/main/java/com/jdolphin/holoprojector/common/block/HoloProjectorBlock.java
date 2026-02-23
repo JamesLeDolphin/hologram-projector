@@ -5,39 +5,46 @@ import com.jdolphin.holoprojector.common.packet.CBOpenGuiPacket;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.DyeItem;
 import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.*;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
-
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("ALL")
 public class HoloProjectorBlock extends HorizontalDirectionalBlock implements EntityBlock {
     protected static final VoxelShape AABB = Block.box(1.0D, 0.0D, 1.0D, 15.0D, 1.0D, 15.0D);
+    public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
     public HoloProjectorBlock(Properties properties) {
         super(properties);
-        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH));
+        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(POWERED, false));
     }
 
     @Override
     protected MapCodec<? extends HorizontalDirectionalBlock> codec() {
-        return null;
+        return simpleCodec(HoloProjectorBlock::new);
     }
 
     public float getDestroyProgress(BlockState state, Player player, BlockGetter getter, BlockPos pos) {
@@ -62,12 +69,35 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
         return this.getCollisionShape(p_60479_, p_60480_, p_60481_, p_60482_);
     }
 
-    public VoxelShape getShape(BlockState p_49341_, BlockGetter p_49342_, BlockPos p_49343_, CollisionContext p_49344_) {
-        return Block.box(1, 0, 1, 15, 32, 15);
+    public VoxelShape getShape(BlockState state, BlockGetter p_49342_, BlockPos p_49343_, CollisionContext p_49344_) {
+        boolean isPowered = state.getValue(POWERED);
+        return Block.box(1, 0, 1, 15, isPowered ? 32 : 1, 15);
     }
 
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite())
+                .setValue(POWERED, context.getLevel().hasNeighborSignal(context.getClickedPos()));
+    }
+
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, BlockPos fromPos, boolean isMoving) {
+        if (!level.isClientSide) {
+            boolean flag = state.getValue(POWERED);
+            if (flag != level.hasNeighborSignal(pos)) {
+                if (flag) {
+                    level.scheduleTick(pos, this, 4);
+                } else {
+                    level.setBlock(pos, state.cycle(POWERED), 2);
+                }
+            }
+        }
+
+    }
+
+    protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+        if (state.getValue(POWERED) && !level.hasNeighborSignal(pos)) {
+            level.setBlock(pos, state.cycle(POWERED), 2);
+        }
+
     }
 
     @Override
@@ -82,7 +112,7 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
     }
 
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, POWERED);
     }
 
     public InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult result) {
