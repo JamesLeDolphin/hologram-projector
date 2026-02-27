@@ -93,7 +93,6 @@ public class HoloProjectorBlock extends HorizontalDirectionalBlock implements En
         if (state.getValue(POWERED) && !level.hasNeighborSignal(pos)) {
             level.setBlock(pos, state.cycle(POWERED), 2);
         }
-
     }
 
     @Override
